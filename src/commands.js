@@ -12,6 +12,9 @@ import { config, save } from './config.js';
 
 export const PREFIX = ',';
 
+const BLACK = 0x000000;
+const RED = 0xed4245;
+
 const isOwner = (user) => user.id === config.ownerId;
 const isAllowed = (user) => isOwner(user) || config.whitelist.includes(user.id);
 
@@ -73,13 +76,17 @@ export async function handleCommand(msg) {
   if (!cmd) return;
   if (!msg.inGuild()) return reply(msg, 'Guild only.');
   if (!cmd.allowed(msg.author)) return reply(msg, 'Not allowed.');
-  await cmd.run(msg);
+  try {
+    await cmd.run(msg);
+  } finally {
+    msg.delete().catch(() => {});
+  }
 }
 
 function configPanel() {
   const e = new EmbedBuilder()
     .setTitle('Configuration')
-    .setColor(0x2b2d31)
+    .setColor(BLACK)
     .setDescription('Click a button to set that role ID. Each save persists immediately.');
   for (const [key, label] of ROLE_KEYS) {
     e.addFields({ name: label, value: config.roles[key] ? `<@&${config.roles[key]}>` : 'Not set', inline: true });
@@ -101,7 +108,7 @@ async function verify(msg) {
   const e = new EmbedBuilder()
     .setTitle('Verification')
     .setDescription('Click the ✅ reaction below to verify yourself.')
-    .setColor(0x57f287);
+    .setColor(BLACK);
   const sent = await msg.channel.send({ embeds: [e] });
   await sent.react('✅');
   verifyMessages.add(sent.id);
@@ -190,7 +197,7 @@ async function snipes(msg) {
     .setAuthor({ name: entry.author, iconURL: entry.avatar })
     .setDescription(entry.content.slice(0, 4000))
     .setFooter({ text: `Deleted ${Math.max(1, Math.round((Date.now() - entry.at) / 1000))}s ago` })
-    .setColor(0x5865f2);
+    .setColor(RED);
   await msg.channel.send({ embeds: [e] });
 }
 
