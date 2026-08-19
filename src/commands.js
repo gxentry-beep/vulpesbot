@@ -227,11 +227,21 @@ export async function onReactionAdd(reaction, user) {
   if (!verifyMessages.has(reaction.message.id)) return;
   const guild = reaction.message.guild;
   if (!guild) return;
-  const member = guild.members.cache.get(user.id);
-  if (!member) return;
+  let member = guild.members.cache.get(user.id);
+  if (!member) member = await guild.members.fetch(user.id).catch(() => null);
+  if (!member) return console.error('[verify] member not found:', user.id);
   const r = role(guild, 'verified');
-  if (!r || member.roles.cache.has(r.id)) return;
-  await member.roles.add(r);
+  if (!r) return console.error('[verify] verified role not configured, run ,configure');
+  if (member.roles.cache.has(r.id)) {
+    reaction.users.remove(user.id).catch(() => {});
+    return;
+  }
+  try {
+    await member.roles.add(r, 'verification');
+    console.log(`[verify] granted ${r.name} to ${user.tag}`);
+  } catch (err) {
+    console.error('[verify] role add failed:', err.message);
+  }
 }
 
 export async function handleButton(interaction) {
