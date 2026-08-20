@@ -247,7 +247,7 @@ export async function onReactionAdd(reaction, user) {
       return console.error('[verify] fetch failed:', err.message);
     }
     message = reaction.message;
-    if (!message.embeds.some((e) => e.footer?.text === 'verify')) {
+    if (!message.embeds.some((e) => e.footer?.text === 'verify' || e.title === 'Verification')) {
       return console.log(`[verify] ignored untracked message ${message.id}`);
     }
     verifyMessages.add(message.id);
