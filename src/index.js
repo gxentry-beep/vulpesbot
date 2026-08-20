@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client, Events, GatewayIntentBits, Partials, ActivityType } from 'discord.js';
 import { config, saveNow } from './config.js';
-import { PREFIX, handleCommand, handleButton, handleModal, onMessageDelete, onReactionAdd } from './commands.js';
+import { PREFIX, handleCommand, handleButton, handleModal, onMessageDelete, onReactionAdd, onReactionRemove } from './commands.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const token = readFileSync(join(__dirname, '..', 'token.txt'), 'utf8').trim();
@@ -32,6 +32,10 @@ client.on(Events.MessageDelete, onMessageDelete);
 
 client.on(Events.MessageReactionAdd, (reaction, user) => {
   onReactionAdd(reaction, user).catch((err) => console.error('[verify]', err));
+});
+
+client.on(Events.MessageReactionRemove, (reaction, user) => {
+  onReactionRemove(reaction, user).catch((err) => console.error('[unverify]', err));
 });
 
 client.on(Events.GuildMemberAdd, (member) => {

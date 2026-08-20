@@ -246,28 +246,32 @@ const commands = {
   mute: { run: mute, allowed: isAllowed },
 };
 
+async function resolvePanel(reaction) {
+  let message = reaction.message;
+  if (verifyMessages.has(message.id)) return message;
+  if (message.author && !message.author.bot) return null;
+  if (reaction.partial) await reaction.fetch();
+  if (message.partial) await message.fetch();
+  message = reaction.message;
+  if (!message.embeds.some((e) => e.footer?.text === 'verify' || e.title === 'Verification')) return null;
+  verifyMessages.add(message.id);
+  if (!config.verifyPanels.includes(message.id)) {
+    config.verifyPanels.push(message.id);
+    if (config.verifyPanels.length > 512) config.verifyPanels.shift();
+    save();
+  }
+  return message;
+}
+
 export async function onReactionAdd(reaction, user) {
   if (user.bot || reaction.emoji.name !== '✅') return;
-  let message = reaction.message;
-  if (!verifyMessages.has(message.id)) {
-    if (message.author && !message.author.bot) return;
-    try {
-      if (reaction.partial) await reaction.fetch();
-      if (message.partial) await message.fetch();
-    } catch (err) {
-      return console.error('[verify] fetch failed:', err.message);
-    }
-    message = reaction.message;
-    if (!message.embeds.some((e) => e.footer?.text === 'verify' || e.title === 'Verification')) {
-      return console.log(`[verify] ignored untracked message ${message.id}`);
-    }
-    verifyMessages.add(message.id);
-    if (!config.verifyPanels.includes(message.id)) {
-      config.verifyPanels.push(message.id);
-      if (config.verifyPanels.length > 512) config.verifyPanels.shift();
-      save();
-    }
+  let message;
+  try {
+    message = await resolvePanel(reaction);
+  } catch (err) {
+    return console.error('[verify] fetch failed:', err.message);
   }
+  if (!message) return;
   const guild = message.guild;
   if (!guild) return;
   let member = guild.members.cache.get(user.id);
@@ -285,6 +289,36 @@ export async function onReactionAdd(reaction, user) {
   } catch (err) {
     console.error('[verify] role add failed:', err.message);
   }
+}
+
+export async function onReactionRemove(reaction, user) {
+  if (user.bot || reaction.emoji.name !== '✅') return;
+  let message;
+  try {
+    message = await resolvePanel(reaction);
+  } catch (err) {
+    return console.error('[unverify] fetch failed:', err.message);
+  }
+  if (!message) return;
+  const guild = message.guild;
+  if (!guild) return;
+  let member = guild.members.cache.get(user.id);
+  if (!member) member = await guild.members.fetch(user.id).catch(() => null);
+  if (!member) return console.error('[unverify] member not found:', user.id);
+  const verifiedRole = role(guild, 'verified');
+  const unverifiedRole = role(guild, 'unverified');
+  if (!verifiedRole && !unverifiedRole) return console.error('[unverify] no roles configured, run ,configure');
+  if (verifiedRole && member.roles.cache.has(verifiedRole.id)) {
+    await member.roles
+      .remove(verifiedRole, 'unverified')
+      .catch((err) => console.error('[unverify] verified remove failed:', err.message));
+  }
+  if (unverifiedRole && !member.roles.cache.has(unverifiedRole.id)) {
+    await member.roles
+      .add(unverifiedRole, 'unverified')
+      .catch((err) => console.error('[unverify] unverified add failed:', err.message));
+  }
+  console.log(`[unverify] unverified ${member.user.tag}`);
 }
 
 export async function handleButton(interaction) {
