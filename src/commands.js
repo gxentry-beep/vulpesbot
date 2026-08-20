@@ -113,6 +113,7 @@ async function verify(msg) {
   const sent = await msg.channel.send({ embeds: [e] });
   await sent.react('✅');
   verifyMessages.add(sent.id);
+  console.log(`[verify] panel posted ${sent.id}`);
   if (verifyMessages.size > 512) verifyMessages.delete(verifyMessages.values().next().value);
 }
 
@@ -223,6 +224,7 @@ const commands = {
 };
 
 export async function onReactionAdd(reaction, user) {
+  console.log(`[rx] emoji=${reaction.emoji?.name} msg=${reaction.messageId} by=${user.id} partial=${reaction.partial} tracked=${verifyMessages.has(reaction.messageId)}`);
   if (user.bot || reaction.emoji.name !== '✅' || !verifyMessages.has(reaction.messageId)) return;
   if (reaction.partial) await reaction.fetch();
   if (!verifyMessages.has(reaction.message.id)) return;
