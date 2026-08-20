@@ -85,6 +85,9 @@ export async function handleCommand(msg) {
   if (!cmd.allowed(msg.author)) return reply(msg, 'Not allowed.');
   try {
     await cmd.run(msg);
+  } catch (err) {
+    console.error('[cmd]', err);
+    reply(msg, `Error: ${err.message}`).catch(() => {});
   } finally {
     msg.delete().catch(() => {});
   }
@@ -129,11 +132,19 @@ async function verify(msg) {
   if (verifyMessages.size > 512) verifyMessages.delete(verifyMessages.values().next().value);
 }
 
+async function resolveMention(msg) {
+  const cached = msg.mentions.members.first();
+  if (cached) return cached;
+  const u = msg.mentions.users.first();
+  if (!u) return null;
+  return msg.guild.members.fetch(u.id).catch(() => null);
+}
+
 async function mod(msg) {
-  const member = msg.mentions.members.first();
+  const member = await resolveMention(msg);
   if (!member) return reply(msg, 'Ping a user: ,mod @user');
   const r = needRole(msg.guild, 'moderator');
-  await member.roles.add(r);
+  await member.roles.add(r, 'mod');
   await reply(msg, `Modded ${member}`);
 }
 
@@ -216,10 +227,10 @@ async function snipes(msg) {
 }
 
 async function mute(msg) {
-  const member = msg.mentions.members.first();
+  const member = await resolveMention(msg);
   if (!member) return reply(msg, 'Ping a user: ,mute @user');
   const r = needRole(msg.guild, 'muted');
-  await member.roles.add(r);
+  await member.roles.add(r, 'mute');
   await reply(msg, `Muted ${member}`);
 }
 

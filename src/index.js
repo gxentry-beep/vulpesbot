@@ -36,8 +36,11 @@ client.on(Events.MessageReactionAdd, (reaction, user) => {
 
 client.on(Events.GuildMemberAdd, (member) => {
   const id = config.roles.unverified;
-  if (!id) return;
-  member.roles.add(id).catch((err) => console.error('[join]', err));
+  if (!id) return console.error('[join] unverified role not configured, run ,configure');
+  member.roles.add(id, 'auto role on join').then(
+    () => console.log(`[join] gave unverified to ${member.user.tag}`),
+    (err) => console.error('[join] role add failed:', err.message)
+  );
 });
 
 client.on(Events.InteractionCreate, (interaction) => {
