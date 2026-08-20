@@ -285,6 +285,12 @@ export async function onReactionAdd(reaction, user) {
   }
   try {
     await member.roles.add(r, 'verification');
+    const unverifiedRole = role(guild, 'unverified');
+    if (unverifiedRole && member.roles.cache.has(unverifiedRole.id)) {
+      await member.roles
+        .remove(unverifiedRole, 'verified')
+        .catch((err) => console.error('[verify] unverified remove failed:', err.message));
+    }
     console.log(`[verify] granted ${r.name} to ${user.tag}`);
   } catch (err) {
     console.error('[verify] role add failed:', err.message);
