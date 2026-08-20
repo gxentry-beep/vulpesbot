@@ -17,7 +17,16 @@ const BLACK = 0x000000;
 const RED = 0xed4245;
 
 const isOwner = (user) => user.id === config.ownerId;
-const isAllowed = (user) => isOwner(user) || config.whitelist.includes(user.id);
+
+const isAllowed = async (msg) => {
+  if (isOwner(msg.author)) return true;
+  if (config.whitelist.includes(msg.author.id)) return true;
+  const roleId = config.roles.whitelisted;
+  if (!roleId) return false;
+  let member = msg.member ?? msg.guild.members.cache.get(msg.author.id);
+  if (!member) member = await msg.guild.members.fetch(msg.author.id).catch(() => null);
+  return !!member && member.roles.cache.has(roleId);
+};
 
 export const verifyMessages = new Set();
 for (const id of config.verifyPanels) verifyMessages.add(id);
@@ -30,6 +39,7 @@ const ROLE_KEYS = [
   ['unverified', 'Unverified Role'],
   ['muted', 'Muted Role'],
   ['moderator', 'Moderator Role'],
+  ['whitelisted', 'Whitelisted Role'],
 ];
 
 export function role(guild, key) {
@@ -81,8 +91,8 @@ export async function handleCommand(msg) {
   const name = body.split(/\s+/)[0].toLowerCase();
   const cmd = commands[name];
   if (!cmd) return;
-  if (!msg.inGuild()) return reply(msg, 'Guild only.');
-  if (!cmd.allowed(msg.author)) return reply(msg, 'Not allowed.');
+  if (!msg.inGuild()) return;
+  if (!(await cmd.allowed(msg))) return;
   try {
     await cmd.run(msg);
   } catch (err) {
@@ -234,11 +244,30 @@ async function mute(msg) {
   await reply(msg, `Muted ${member}`);
 }
 
+async function help(msg) {
+  const e = new EmbedBuilder().setTitle('Commands').setColor(BLACK);
+  const lines = [
+    [',configure', 'Open the config panel to set role IDs'],
+    [',verify', 'Post a verification embed'],
+    [',mod @user', 'Give the moderator role'],
+    [',whitelist @user', 'Whitelist a user'],
+    [',lock', 'Lock this channel'],
+    [',unlock', 'Unlock this channel'],
+    [',renew', 'Recreate this channel'],
+    [',snipes', 'Show the latest deleted message'],
+    [',mute @user', 'Give the muted role'],
+    [',help', 'Show this list'],
+  ];
+  for (const [cmd, desc] of lines) e.addFields({ name: cmd, value: desc, inline: true });
+  await msg.channel.send({ embeds: [e] });
+}
+
 const commands = {
-  configure: { run: configure, allowed: isOwner },
-  verify: { run: verify, allowed: isOwner },
-  mod: { run: mod, allowed: isOwner },
-  whitelist: { run: whitelist, allowed: isOwner },
+  configure: { run: configure, allowed: (m) => isOwner(m.author) },
+  verify: { run: verify, allowed: (m) => isOwner(m.author) },
+  mod: { run: mod, allowed: (m) => isOwner(m.author) },
+  whitelist: { run: whitelist, allowed: (m) => isOwner(m.author) },
+  help: { run: help, allowed: isAllowed },
   lock: { run: lock, allowed: isAllowed },
   unlock: { run: unlock, allowed: isAllowed },
   renew: { run: renew, allowed: isAllowed },
@@ -331,7 +360,7 @@ export async function handleButton(interaction) {
   if (interaction.user.id !== config.ownerId) {
     return interaction.reply({ content: 'Owner only.', flags: MessageFlags.Ephemeral });
   }
-  const m = /^cfg:(verified|unverified|muted|moderator)$/.exec(interaction.customId);
+  const m = /^cfg:(verified|unverified|muted|moderator|whitelisted)$/.exec(interaction.customId);
   if (!m) return;
   const key = m[1];
   const input = new TextInputBuilder()
@@ -350,7 +379,7 @@ export async function handleButton(interaction) {
 
 export async function handleModal(interaction) {
   if (interaction.user.id !== config.ownerId) return;
-  const m = /^cfgmodal:(verified|unverified|muted|moderator)$/.exec(interaction.customId);
+  const m = /^cfgmodal:(verified|unverified|muted|moderator|whitelisted)$/.exec(interaction.customId);
   if (!m) return;
   const key = m[1];
   const value = interaction.fields.getTextInputValue('value').trim();
