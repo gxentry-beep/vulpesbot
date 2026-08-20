@@ -7,6 +7,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   ChannelType,
+  MessageFlags,
 } from 'discord.js';
 import { config, save } from './config.js';
 
@@ -246,7 +247,7 @@ export async function onReactionAdd(reaction, user) {
 
 export async function handleButton(interaction) {
   if (interaction.user.id !== config.ownerId) {
-    return interaction.reply({ content: 'Owner only.', ephemeral: true });
+    return interaction.reply({ content: 'Owner only.', flags: MessageFlags.Ephemeral });
   }
   const m = /^cfg:(verified|unverified|muted|moderator)$/.exec(interaction.customId);
   if (!m) return;
@@ -272,7 +273,7 @@ export async function handleModal(interaction) {
   const key = m[1];
   const value = interaction.fields.getTextInputValue('value').trim();
   if (value && !/^\d{17,20}$/.test(value)) {
-    return interaction.reply({ content: 'That is not a valid role ID.', ephemeral: true });
+    return interaction.reply({ content: 'That is not a valid role ID.', flags: MessageFlags.Ephemeral });
   }
   config.roles[key] = value || null;
   save();
@@ -280,6 +281,6 @@ export async function handleModal(interaction) {
   if (panel?.editable) await panel.edit({ embeds: [configPanel()] }).catch(() => {});
   await interaction.reply({
     content: `Saved ${key} role: ${value ? `<@&${value}>` : 'cleared'}`,
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 }
