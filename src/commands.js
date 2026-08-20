@@ -20,6 +20,7 @@ const isOwner = (user) => user.id === config.ownerId;
 const isAllowed = (user) => isOwner(user) || config.whitelist.includes(user.id);
 
 export const verifyMessages = new Set();
+for (const id of config.verifyPanels) verifyMessages.add(id);
 const snipeCache = new Map();
 const SNIPE_PER_CHANNEL = 3;
 const SNIPE_MAX = 300;
@@ -51,6 +52,11 @@ async function reply(msg, text) {
 export function onMessageDelete(message) {
   if (message.partial) return;
   verifyMessages.delete(message.id);
+  const idx = config.verifyPanels.indexOf(message.id);
+  if (idx !== -1) {
+    config.verifyPanels.splice(idx, 1);
+    save();
+  }
   if (!message.author || message.author.bot) return;
   let list = snipeCache.get(message.channelId);
   if (!list) {
@@ -113,6 +119,11 @@ async function verify(msg) {
   const sent = await msg.channel.send({ embeds: [e] });
   await sent.react('✅');
   verifyMessages.add(sent.id);
+  if (!config.verifyPanels.includes(sent.id)) {
+    config.verifyPanels.push(sent.id);
+    if (config.verifyPanels.length > 512) config.verifyPanels.shift();
+    save();
+  }
   console.log(`[verify] panel posted ${sent.id}`);
   if (verifyMessages.size > 512) verifyMessages.delete(verifyMessages.values().next().value);
 }

@@ -10,6 +10,7 @@ const DEFAULTS = {
   ownerId: '1524480031836078220',
   roles: { verified: null, unverified: null, muted: null, moderator: null },
   whitelist: [],
+  verifyPanels: [],
 };
 
 function load() {
@@ -19,6 +20,7 @@ function load() {
       ownerId: raw.ownerId ?? DEFAULTS.ownerId,
       roles: { ...DEFAULTS.roles, ...(raw.roles ?? {}) },
       whitelist: Array.isArray(raw.whitelist) ? raw.whitelist : [],
+      verifyPanels: Array.isArray(raw.verifyPanels) ? raw.verifyPanels : [],
     };
   } catch {
     return structuredClone(DEFAULTS);
