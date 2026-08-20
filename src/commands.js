@@ -296,7 +296,11 @@ async function honey(msg) {
     const idx = config.honeyChannels.indexOf(ch.id);
     if (idx !== -1) config.honeyChannels.splice(idx, 1);
     save();
-    await reply(msg, `Honey trap disarmed in ${ch}.`);
+    const e = new EmbedBuilder()
+      .setTitle('Honey Trap Disarmed')
+      .setDescription('This channel is safe again. Anyone can chat freely.')
+      .setColor(BLACK);
+    await msg.channel.send({ embeds: [e] });
   } else {
     honeyChannels.add(ch.id);
     if (!config.honeyChannels.includes(ch.id)) {
@@ -304,7 +308,12 @@ async function honey(msg) {
       save();
     }
     honeySkipMessage = msg.id;
-    await reply(msg, `Honey trap armed in ${ch}. Anyone who sends a message or reacts here gets kicked.`);
+    const e = new EmbedBuilder()
+      .setTitle('🍯 Honey Trap Armed')
+      .setDescription('Anyone who sends a message or reacts in this channel gets kicked. No exceptions.')
+      .setColor(RED);
+    const sent = await msg.channel.send({ embeds: [e] });
+    await sent.react('🍯').catch(() => {});
   }
 }
 
