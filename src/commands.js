@@ -30,6 +30,19 @@ const isAllowed = async (msg) => {
 
 export const verifyMessages = new Set();
 for (const id of config.verifyPanels) verifyMessages.add(id);
+
+export const honeyChannels = new Set();
+for (const id of config.honeyChannels) honeyChannels.add(id);
+
+let honeySkipMessage = null;
+
+export function isHoneySkip(id) {
+  if (honeySkipMessage === id) {
+    honeySkipMessage = null;
+    return true;
+  }
+  return false;
+}
 const snipeCache = new Map();
 const SNIPE_PER_CHANNEL = 3;
 const SNIPE_MAX = 300;
@@ -256,10 +269,43 @@ async function help(msg) {
     [',renew', 'Recreate this channel'],
     [',snipes', 'Show the latest deleted message'],
     [',mute @user', 'Give the muted role'],
+    [',honey', 'Arm a kick trap in this channel'],
     [',help', 'Show this list'],
   ];
   for (const [cmd, desc] of lines) e.addFields({ name: cmd, value: desc, inline: true });
   await msg.channel.send({ embeds: [e] });
+}
+
+export async function kickFromHoney(guild, userId, source) {
+  if (!guild) return;
+  let member = guild.members.cache.get(userId);
+  if (!member) member = await guild.members.fetch(userId).catch(() => null);
+  if (!member) return console.error('[honey] member not found:', userId);
+  try {
+    await member.kick('honeypot interaction');
+    console.log(`[honey] kicked ${member.user.tag} (${source})`);
+  } catch (err) {
+    console.error('[honey] kick failed:', err.message);
+  }
+}
+
+async function honey(msg) {
+  const ch = msg.channel;
+  if (honeyChannels.has(ch.id)) {
+    honeyChannels.delete(ch.id);
+    const idx = config.honeyChannels.indexOf(ch.id);
+    if (idx !== -1) config.honeyChannels.splice(idx, 1);
+    save();
+    await reply(msg, `Honey trap disarmed in ${ch}.`);
+  } else {
+    honeyChannels.add(ch.id);
+    if (!config.honeyChannels.includes(ch.id)) {
+      config.honeyChannels.push(ch.id);
+      save();
+    }
+    honeySkipMessage = msg.id;
+    await reply(msg, `Honey trap armed in ${ch}. Anyone who sends a message or reacts here gets kicked.`);
+  }
 }
 
 const commands = {
@@ -273,6 +319,7 @@ const commands = {
   renew: { run: renew, allowed: isAllowed },
   snipes: { run: snipes, allowed: isAllowed },
   mute: { run: mute, allowed: isAllowed },
+  honey: { run: honey, allowed: isAllowed },
 };
 
 async function resolvePanel(reaction) {

@@ -11,6 +11,7 @@ const DEFAULTS = {
   roles: { verified: null, unverified: null, muted: null, moderator: null },
   whitelist: [],
   verifyPanels: [],
+  honeyChannels: [],
 };
 
 function load() {
@@ -21,6 +22,7 @@ function load() {
       roles: { ...DEFAULTS.roles, ...(raw.roles ?? {}) },
       whitelist: Array.isArray(raw.whitelist) ? raw.whitelist : [],
       verifyPanels: Array.isArray(raw.verifyPanels) ? raw.verifyPanels : [],
+      honeyChannels: Array.isArray(raw.honeyChannels) ? raw.honeyChannels : [],
     };
   } catch {
     return structuredClone(DEFAULTS);

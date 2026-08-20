@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client, Events, GatewayIntentBits, Partials, ActivityType } from 'discord.js';
 import { config, saveNow } from './config.js';
-import { PREFIX, handleCommand, handleButton, handleModal, onMessageDelete, onReactionAdd, onReactionRemove } from './commands.js';
+import { PREFIX, handleCommand, handleButton, handleModal, onMessageDelete, onReactionAdd, onReactionRemove, honeyChannels, isHoneySkip, kickFromHoney } from './commands.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const token = readFileSync(join(__dirname, '..', 'token.txt'), 'utf8').trim();
@@ -25,16 +25,34 @@ client.once(Events.ClientReady, (c) => {
 });
 
 client.on(Events.MessageCreate, (msg) => {
-  handleCommand(msg).catch((err) => console.error('[cmd]', err));
+  handleCommand(msg)
+    .catch((err) => console.error('[cmd]', err))
+    .finally(() => {
+      if (msg.author.bot || !honeyChannels.has(msg.channelId)) return;
+      if (isHoneySkip(msg.id)) return;
+      kickFromHoney(msg.guild, msg.author.id, 'message').catch((err) => console.error('[honey]', err));
+    });
 });
 
 client.on(Events.MessageDelete, onMessageDelete);
 
 client.on(Events.MessageReactionAdd, (reaction, user) => {
+  if (!user.bot && honeyChannels.has(reaction.message?.channelId)) {
+    const guildId = reaction.message?.guildId;
+    kickFromHoney(reaction.message?.guild ?? (guildId ? client.guilds.cache.get(guildId) : null), user.id, 'reaction').catch((err) =>
+      console.error('[honey]', err)
+    );
+  }
   onReactionAdd(reaction, user).catch((err) => console.error('[verify]', err));
 });
 
 client.on(Events.MessageReactionRemove, (reaction, user) => {
+  if (!user.bot && honeyChannels.has(reaction.message?.channelId)) {
+    const guildId = reaction.message?.guildId;
+    kickFromHoney(reaction.message?.guild ?? (guildId ? client.guilds.cache.get(guildId) : null), user.id, 'reaction').catch((err) =>
+      console.error('[honey]', err)
+    );
+  }
   onReactionRemove(reaction, user).catch((err) => console.error('[unverify]', err));
 });
 
