@@ -224,8 +224,9 @@ const commands = {
 };
 
 export async function onReactionAdd(reaction, user) {
-  console.log(`[rx] emoji=${reaction.emoji?.name} msg=${reaction.messageId} by=${user.id} partial=${reaction.partial} tracked=${verifyMessages.has(reaction.messageId)}`);
-  if (user.bot || reaction.emoji.name !== '✅' || !verifyMessages.has(reaction.messageId)) return;
+  const messageId = reaction.message?.id;
+  console.log(`[rx] emoji=${reaction.emoji?.name} msg=${messageId} by=${user.id} partial=${reaction.partial} tracked=${verifyMessages.has(messageId)}`);
+  if (user.bot || reaction.emoji.name !== '✅' || !messageId || !verifyMessages.has(messageId)) return;
   if (reaction.partial) await reaction.fetch();
   if (!verifyMessages.has(reaction.message.id)) return;
   const guild = reaction.message.guild;
