@@ -115,6 +115,7 @@ async function verify(msg) {
   const e = new EmbedBuilder()
     .setTitle('Verification')
     .setDescription('Click the ✅ reaction below to verify yourself.')
+    .setFooter({ text: 'verify' })
     .setColor(BLACK);
   const sent = await msg.channel.send({ embeds: [e] });
   await sent.react('✅');
@@ -235,12 +236,28 @@ const commands = {
 };
 
 export async function onReactionAdd(reaction, user) {
-  const messageId = reaction.message?.id;
-  console.log(`[rx] emoji=${reaction.emoji?.name} msg=${messageId} by=${user.id} partial=${reaction.partial} tracked=${verifyMessages.has(messageId)}`);
-  if (user.bot || reaction.emoji.name !== '✅' || !messageId || !verifyMessages.has(messageId)) return;
-  if (reaction.partial) await reaction.fetch();
-  if (!verifyMessages.has(reaction.message.id)) return;
-  const guild = reaction.message.guild;
+  if (user.bot || reaction.emoji.name !== '✅') return;
+  let message = reaction.message;
+  if (!verifyMessages.has(message.id)) {
+    if (message.author && !message.author.bot) return;
+    try {
+      if (reaction.partial) await reaction.fetch();
+      if (message.partial) await message.fetch();
+    } catch (err) {
+      return console.error('[verify] fetch failed:', err.message);
+    }
+    message = reaction.message;
+    if (!message.embeds.some((e) => e.footer?.text === 'verify')) {
+      return console.log(`[verify] ignored untracked message ${message.id}`);
+    }
+    verifyMessages.add(message.id);
+    if (!config.verifyPanels.includes(message.id)) {
+      config.verifyPanels.push(message.id);
+      if (config.verifyPanels.length > 512) config.verifyPanels.shift();
+      save();
+    }
+  }
+  const guild = message.guild;
   if (!guild) return;
   let member = guild.members.cache.get(user.id);
   if (!member) member = await guild.members.fetch(user.id).catch(() => null);
